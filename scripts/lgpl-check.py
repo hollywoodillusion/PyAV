@@ -31,6 +31,15 @@ check("--enable-nonfree" not in config, "configuration has no --enable-nonfree")
 for name in ("libx264", "libx265"):
     check(not has_encoder(name), f"{name} encoder is absent")
 
+if sys.platform == "linux":
+    # A bundled libxcb next to the system one deadlocks the NVIDIA Vulkan ICD under X11
+    for flag in ("--disable-libxcb", "--disable-xlib"):
+        check(flag in config, f"configuration has {flag}")
+    with open("/proc/self/maps") as f:
+        mapped = {line.split()[-1] for line in f if "/" in line}
+    x11 = sorted(m for m in mapped if any(x in m for x in ("libxcb", "libX", "libva-x11")))
+    check(not x11, f"no X11 library loaded by import av {x11}")
+
 hardware = {
     "win32": ["h264_nvenc", "h264_amf", "h264_qsv", "h264_mf", "hevc_nvenc", "hevc_amf", "hevc_qsv", "hevc_mf"],
     "linux": ["h264_vaapi", "h264_nvenc", "h264_amf", "h264_qsv", "hevc_vaapi", "hevc_nvenc", "hevc_amf", "hevc_qsv"],
